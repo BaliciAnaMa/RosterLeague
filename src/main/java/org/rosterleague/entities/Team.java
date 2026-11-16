@@ -51,6 +51,7 @@ public class Team implements Serializable {
     {this.points=0;}
 
 
+
     /** Creates a new instance of Team */
     public Team() {
     }

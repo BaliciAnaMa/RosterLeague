@@ -17,6 +17,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Comparator;
+import java.util.Random;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.ejb.EJBException;
@@ -31,6 +33,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.rosterleague.common.*;
 import org.rosterleague.entities.*;
+
 
 /**
  * This is the bean class for the RequestBean enterprise bean.
@@ -508,6 +511,123 @@ public class RequestBean implements Request, Serializable {
             throw new EJBException(ex);
         }
         return leagueDetails;
+    }
+
+    @Override
+    public void setupTournamentData() {
+        try {
+            createLeague(new LeagueDetails("CL", "Champions League", "Soccer"));
+            createLeague(new LeagueDetails("USC", "UEFA Super Cup", "Soccer"));
+            createLeague(new LeagueDetails("FIC", "FIFA International Cup", "Soccer"));
+
+            String[] teamIds = {"T_SB", "T_HD", "T_BV", "T_CJ", "T_TM"};
+            String[] teamNames = {"Real Madrid", "Barcelona", "Manchester United", "Bayern Munchen", "Juventus"};
+            String[] cities = {"Sibiu", "Hunedoara", "Brasov", "Cluj", "Timisoara"};
+
+            for (int i = 0; i < teamIds.length; i++) {
+                createTeamInLeague(new TeamDetails(teamIds[i], teamNames[i], cities[i]), "CL");
+            }
+
+            Random rand = new Random();
+            int playerCounter = 1;
+            for (String teamId : teamIds) {
+                for (int j = 0; j < 5; j++) {
+                    String playerId = "P" + playerCounter;
+                    double salary = 1000 + rand.nextInt(9001);
+                    createPlayer(playerId, playerId, "player", salary);
+                    addPlayer(playerId, teamId);
+                    playerCounter++;
+                }
+            }
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    @Override
+    public String playTournament(String leagueId, String nextLeagueId) {
+        StringBuilder output = new StringBuilder();
+        Random rand = new Random();
+
+        try {
+            League league = em.find(League.class, leagueId);
+            List<Team> teams = new ArrayList<>(league.getTeams());
+
+            for (Team team : teams) {
+                team.resetPoints();
+            }
+
+            output.append("=== ").append(league.getName()).append(" -Matches=");
+
+            for (int i = 0; i < teams.size(); i++) {
+                for (int j = i + 1; j < teams.size(); j++) {
+                    Team teamA = teams.get(i);
+                    Team teamB = teams.get(j);
+
+                    int goalsA = rand.nextInt(6);
+                    int goalsB = rand.nextInt(6);
+
+                    if (goalsA > goalsB) {
+                        teamA.addPoints(3);
+                    } else if (goalsB > goalsA) {
+                        teamB.addPoints(3);
+                    } else {
+                        teamA.addPoints(1);
+                        teamB.addPoints(1);
+                    }
+
+                    output.append("\"").append(teamA.getName()).append("\":").append(teamA.getPoints())
+                            .append(" - ")
+                            .append("\"").append(teamB.getName()).append("\":").append(teamB.getPoints())
+                            .append(" - match:").append(goalsA).append("-").append(goalsB)
+                            .append("\n");
+                }
+            }
+
+            teams.sort(Comparator.comparingInt(Team::getPoints).reversed());
+
+            double[] rewards = {30000.0, 20000.0, 10000.0};
+            for (int place = 0; place < teams.size() && place < 3; place++) {
+                Team team = teams.get(place);
+                for (Player player : team.getPlayers()) {
+                    player.setSalary(player.getSalary() + rewards[place]);
+                }
+            }
+
+            output.append("\n=== ").append(league.getName()).append(" - Clasament ===\n");
+            for (int i = 0; i < teams.size(); i++) {
+                Team team = teams.get(i);
+                int place = i + 1;
+                List<Player> players = new ArrayList<>(team.getPlayers());
+                players.sort(Comparator.comparingInt(p -> Integer.parseInt(p.getName().substring(1))));
+
+                for (Player player : players) {
+                    output.append("\"").append(league.getName()).append("\", place ").append(place)
+                            .append(", \"").append(team.getName()).append("\", player ")
+                            .append(player.getName()).append(" - ").append(player.getSalary())
+                            .append("\n");
+                }
+            }
+            output.append("\n");
+
+            if (nextLeagueId != null && teams.size() > 1) {
+                League nextLeague = em.find(League.class, nextLeagueId);
+                Team eliminatedTeam = teams.get(teams.size() - 1);
+                league.dropTeam(eliminatedTeam);
+                eliminatedTeam.setLeague(null);
+
+                for (int i = 0; i < teams.size() - 1; i++) {
+                    Team qualified = teams.get(i);
+                    league.dropTeam(qualified);
+                    qualified.setLeague(nextLeague);
+                    nextLeague.addTeam(qualified);
+                }
+            }
+
+            return output.toString();
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
     }
 
     @Override
