@@ -34,7 +34,23 @@ public class Team implements Serializable {
     private String city;
     private Collection<Player> players;
     private League league;
-    
+    private int points;
+
+    public int getPoints() {
+        return points;
+    }
+
+    public void setPoints(int points) {
+        this.points = points;
+    }
+    public void addPoints(int pointsAdd)
+    {
+        this.points+=pointsAdd;
+    }
+    public void resetPoints()
+    {this.points=0;}
+
+
     /** Creates a new instance of Team */
     public Team() {
     }
@@ -43,6 +59,7 @@ public class Team implements Serializable {
         this.id = id;
         this.name = name;
         this.city = city;
+        this.points = 0;
     }
 
     @Id
