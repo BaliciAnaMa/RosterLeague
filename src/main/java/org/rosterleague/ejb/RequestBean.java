@@ -557,7 +557,7 @@ public class RequestBean implements Request, Serializable {
                 team.resetPoints();
             }
 
-            output.append("=== ").append(league.getName()).append(" -Matches=");
+            output.append(" ").append(league.getName()).append(" -Matches");
 
             for (int i = 0; i < teams.size(); i++) {
                 for (int j = i + 1; j < teams.size(); j++) {
@@ -594,7 +594,7 @@ public class RequestBean implements Request, Serializable {
                 }
             }
 
-            output.append("\n=== ").append(league.getName()).append(" - Standings ===\n");
+            output.append("\n ").append(league.getName()).append(" - Standings \n");
             for (int i = 0; i < teams.size(); i++) {
                 Team team = teams.get(i);
                 int place = i + 1;
